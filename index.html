@@ -1,594 +1,1015 @@
 <!DOCTYPE html>
-<html lang="zh-TW" class="scroll-smooth">
+<html lang="zh-CN" class="h-full dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>林玉婷 | 數位多媒體 個人作品集</title>
-    <!-- Tailwind CSS CDN -->
+    <title>Cyberpunk Clock & Particle Visualizer</title>
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Google Fonts: Inter & Noto Sans TC -->
+    <!-- Google Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&family=Orbitron:wght@400;600;800;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 
     <script>
         tailwind.config = {
+            darkMode: 'class',
             theme: {
                 extend: {
                     fontFamily: {
-                        sans: ['"Noto Sans TC"', 'Inter', 'sans-serif'],
+                        orbitron: ['Orbitron', 'sans-serif'],
+                        rajdhani: ['Rajdhani', 'sans-serif'],
+                        sans: ['Inter', 'sans-serif'],
                     },
                     colors: {
-                        cream: {
-                            50: '#fdfbf7',
-                            100: '#f7f4ed',
-                            200: '#eee8da',
-                        },
-                        brand: {
-                            violet: '#6366f1',
-                            indigo: '#4f46e5',
-                            soft: '#818cf8',
-                            dark: '#1e1b4b',
-                            warm: '#f59e0b',
-                        }
-                    },
-                    animation: {
-                        'float': 'float 6s ease-in-out infinite',
-                        'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-                    },
-                    keyframes: {
-                        float: {
-                            '0%, 100%': { transform: 'translateY(0px)' },
-                            '50%': { transform: 'translateY(-10px)' },
+                        cyber: {
+                            cyan: '#00f3ff',
+                            pink: '#ff007f',
+                            purple: '#9d00ff',
+                            yellow: '#ffe600',
+                            dark: '#0a0d14'
                         }
                     }
                 }
             }
         }
     </script>
+
     <style>
-        body {
-            background-color: #fcfcf9;
-            color: #334155;
-        }
-        .glass-card {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(226, 232, 240, 0.8);
-        }
-        .glass-nav {
-            background: rgba(253, 251, 247, 0.85);
+        /* Custom Glassmorphism Styles */
+        .glass-panel {
+            background: rgba(13, 17, 28, 0.65);
             backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
         }
-        .fade-in-up {
-            opacity: 0;
-            transform: translateY(24px);
-            transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1), transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+
+        .glass-panel-sm {
+            background: rgba(20, 26, 42, 0.45);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
         }
-        .fade-in-up.visible {
-            opacity: 1;
-            transform: translateY(0);
+
+        /* Dynamic Glow Classes */
+        .theme-glow-primary {
+            text-shadow: 0 0 12px var(--primary-glow), 0 0 24px var(--primary-glow);
+        }
+        .theme-box-glow {
+            box-shadow: 0 0 20px -3px var(--primary-glow-alpha);
+        }
+
+        /* Pulse animation for clock dots */
+        @keyframes pulse-fast {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.3; transform: scale(0.92); }
+        }
+        .animate-pulse-fast {
+            animation: pulse-fast 1s infinite ease-in-out;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(0,0,0,0.2);
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.15);
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        /* Canvas Overlay */
+        #particle-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 0;
+            pointer-events: none;
         }
     </style>
 </head>
-<body class="font-sans antialiased selection:bg-indigo-100 selection:text-indigo-900">
 
-    <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-6 right-6 z-50 transform translate-y-20 opacity-0 transition-all duration-300 ease-out bg-slate-900 text-white px-5 py-3 rounded-xl shadow-2xl flex items-center gap-3">
-        <i class="fa-solid fa-circle-check text-emerald-400 text-lg"></i>
-        <span id="toast-message" class="text-sm font-medium">複製成功！</span>
-    </div>
+<body class="h-full bg-slate-950 text-slate-100 font-sans antialiased select-none overflow-x-hidden relative">
 
-    <!-- Navigation Header -->
-    <header class="fixed top-0 left-0 right-0 z-40 glass-nav border-b border-slate-200/60 transition-all duration-300">
-        <div class="max-w-6xl mx-auto px-6 h-20 flex items-center justify-between">
-            <a href="#" class="flex items-center gap-3 group">
-                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-indigo-600 to-violet-400 flex items-center justify-center text-white font-bold text-lg shadow-md shadow-indigo-200 group-hover:scale-105 transition-transform">
-                    婷
+    <!-- Interactive Canvas Background -->
+    <canvas id="particle-canvas"></canvas>
+
+    <!-- Main App Container -->
+    <div class="relative z-10 min-h-screen flex flex-col justify-between p-4 sm:p-6 lg:p-8">
+
+        <!-- Header Bar -->
+        <header class="w-full max-w-7xl mx-auto glass-panel rounded-2xl px-5 py-4 mb-6 flex items-center justify-between transition-all duration-300">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-cyan-500 to-pink-500 flex items-center justify-center text-white text-lg font-bold shadow-lg shadow-cyan-500/30">
+                    <i class="fa-solid font-orbitron text-xl">⚡</i>
                 </div>
                 <div>
-                    <span class="text-lg font-bold text-slate-800 tracking-tight">林玉婷</span>
-                    <span class="text-xs text-indigo-600 block font-medium -mt-1">Lin Yu-Ting</span>
-                </div>
-            </a>
-
-            <!-- Desktop Nav Links -->
-            <nav class="hidden md:flex items-center gap-8 font-medium text-slate-600 text-sm">
-                <a href="#about" class="hover:text-indigo-600 transition-colors">關於我</a>
-                <a href="#skills" class="hover:text-indigo-600 transition-colors">專業技能</a>
-                <a href="#interests" class="hover:text-indigo-600 transition-colors">興趣愛好</a>
-                <a href="#contact" class="hover:text-indigo-600 transition-colors">聯絡方式</a>
-            </nav>
-
-            <!-- CTA Button -->
-            <a href="#contact" class="hidden md:inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-full text-sm font-medium shadow-sm hover:shadow-md hover:shadow-indigo-200 transition-all">
-                <i class="fa-regular fa-paper-plane text-xs"></i> 聯繫我
-            </a>
-
-            <!-- Mobile Menu Button -->
-            <button id="menu-btn" class="md:hidden p-2 text-slate-600 hover:text-slate-900 focus:outline-none">
-                <i class="fa-solid fa-bars text-xl"></i>
-            </button>
-        </div>
-
-        <!-- Mobile Navigation Drawer -->
-        <div id="mobile-menu" class="hidden md:hidden border-t border-slate-200/60 bg-white/95 px-6 py-4 space-y-3">
-            <a href="#about" class="mobile-link block text-slate-600 font-medium py-2">關於我</a>
-            <a href="#skills" class="mobile-link block text-slate-600 font-medium py-2">專業技能</a>
-            <a href="#interests" class="mobile-link block text-slate-600 font-medium py-2">興趣愛好</a>
-            <a href="#contact" class="mobile-link block text-slate-600 font-medium py-2">聯絡方式</a>
-        </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="pt-20">
-        
-        <!-- Hero Section -->
-        <section class="min-h-[85vh] flex items-center justify-center relative overflow-hidden px-6 py-16">
-            <!-- Background Decorative Elements -->
-            <div class="absolute top-1/4 left-10 w-72 h-72 bg-violet-200/40 rounded-full blur-3xl -z-10 animate-pulse-slow"></div>
-            <div class="absolute bottom-1/4 right-10 w-96 h-96 bg-amber-100/50 rounded-full blur-3xl -z-10 animate-float"></div>
-
-            <div class="max-w-5xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
-                
-                <!-- Left: Text Info -->
-                <div class="lg:col-span-7 text-center lg:text-left space-y-6">
-                    <!-- Tag -->
-                    <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 border border-indigo-100 text-indigo-700 text-xs sm:text-sm font-medium shadow-xs">
-                        <span class="w-2 h-2 rounded-full bg-indigo-500 animate-ping"></span>
-                        黎明技術學院 數位多媒體系
-                    </div>
-
-                    <!-- Main Title -->
-                    <h1 class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 tracking-tight leading-tight">
-                        你好，我是 <span class="bg-gradient-to-r from-indigo-600 via-violet-600 to-amber-500 bg-clip-text text-transparent">林玉婷</span>
+                    <h1 class="font-orbitron font-extrabold text-lg sm:text-xl tracking-wider text-white flex items-center gap-2">
+                        CYBER<span id="header-accent-title" class="text-cyan-400">CHRONO</span>
                     </h1>
-
-                    <!-- Quote / Motto Card -->
-                    <div class="p-6 glass-card rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-100 relative">
-                        <i class="fa-solid fa-quote-left text-indigo-200 text-3xl absolute top-4 left-4"></i>
-                        <p class="text-slate-700 text-base sm:text-lg font-medium leading-relaxed relative z-10 px-4">
-                            「喜歡探索不一樣生活，也喜歡認真對待每一件事。」
-                        </p>
-                        <i class="fa-solid fa-quote-right text-indigo-200 text-3xl absolute bottom-4 right-4"></i>
-                    </div>
-
-                    <p class="text-slate-500 text-base sm:text-lg">
-                        熱衷於影像創作、視訊剪輯與音樂表達，用感官與鏡頭探索世界的豐富色彩。
-                    </p>
-
-                    <!-- Hero Buttons -->
-                    <div class="flex flex-wrap justify-center lg:justify-start gap-4 pt-2">
-                        <a href="#skills" class="bg-indigo-600 hover:bg-indigo-700 text-white font-medium px-7 py-3.5 rounded-xl shadow-lg shadow-indigo-200 hover:shadow-indigo-300 transition-all flex items-center gap-2">
-                            <span>探索技能作品</span>
-                            <i class="fa-solid fa-arrow-down text-sm"></i>
-                        </a>
-                        <a href="#contact" class="bg-white hover:bg-slate-50 text-slate-700 font-medium px-7 py-3.5 rounded-xl border border-slate-200 shadow-xs transition-all flex items-center gap-2">
-                            <i class="fa-regular fa-envelope text-indigo-600"></i>
-                            <span>與我聯繫</span>
-                        </a>
-                    </div>
+                    <p class="text-xs text-slate-400 font-rajdhani tracking-widest uppercase">Particle & Focus Workstation</p>
                 </div>
-
-                <!-- Right: Profile Photo Container (Hero) -->
-                <div class="lg:col-span-5 flex justify-center">
-                    <div class="relative group max-w-xs sm:max-w-sm w-full">
-                        <!-- Decorative Frame Glow -->
-                        <div class="absolute -inset-1.5 bg-gradient-to-tr from-indigo-500 via-violet-400 to-amber-300 rounded-3xl blur opacity-40 group-hover:opacity-75 transition duration-500"></div>
-                        
-                        <!-- Photo Frame -->
-                        <div class="relative bg-white p-3 rounded-3xl shadow-xl border border-slate-100">
-                            <!-- 
-                                【替換個人真實照片說明】
-                                請將下方 <img> 中的 src 替換為您的照片 URL 網址
-                                例如：src="https://your-domain.com/path-to-your-photo.jpg" 
-                            -->
-                            <div class="overflow-hidden rounded-2xl aspect-[4/5] bg-slate-100 relative">
-                                <img src="https://placehold.co/600x750/eef2ff/4338ca?text=%E6%9E%97%E7%8E%89%E5%A9%B7%0APhoto" 
-                                     alt="林玉婷個人照片" 
-                                     class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-out"
-                                     onerror="this.src='https://placehold.co/600x750/f1f5f9/64748b?text=Personal+Photo'">
-                                
-                                <!-- Floating Badge on Photo -->
-                                <div class="absolute bottom-3 left-3 right-3 glass-nav px-4 py-2.5 rounded-xl border border-white/60 shadow-md flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-lg bg-indigo-600 text-white flex items-center justify-center text-sm shadow">
-                                        <i class="fa-solid fa-camera"></i>
-                                    </div>
-                                    <div class="text-left">
-                                        <p class="text-xs font-bold text-slate-800">數媒創作者</p>
-                                        <p class="text-[10px] text-slate-500">Multimedia Creator</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
             </div>
-        </section>
 
-        <!-- About Me Section -->
-        <section id="about" class="py-20 px-6 max-w-6xl mx-auto">
-            <div class="fade-in-up">
-                <div class="text-center max-w-2xl mx-auto mb-14">
-                    <span class="text-indigo-600 font-semibold text-xs tracking-widest uppercase">ABOUT ME</span>
-                    <h2 class="text-3xl font-bold text-slate-900 mt-2">關於我</h2>
-                    <div class="w-12 h-1 bg-indigo-600 mx-auto mt-4 rounded-full"></div>
+            <!-- Header Quick Actions -->
+            <div class="flex items-center gap-2 sm:gap-4">
+                <!-- Sound Toggle -->
+                <button id="btn-audio-toggle" onclick="toggleAmbientAudio()" class="glass-panel-sm hover:bg-white/10 px-3.5 py-2 rounded-xl text-slate-300 hover:text-white transition-all duration-200 flex items-center gap-2 text-sm border border-white/10">
+                    <i id="audio-icon" class="fa-solid fa-volume-xmark text-pink-400"></i>
+                    <span id="audio-text" class="hidden md:inline font-rajdhani font-semibold">环境音: 关</span>
+                </button>
+
+                <!-- Theme Quick Selector Pill -->
+                <div class="relative hidden sm:block">
+                    <select id="theme-select" onchange="changeTheme(this.value)" class="glass-panel-sm hover:bg-white/10 text-slate-200 text-sm font-rajdhani font-semibold py-2 pl-3 pr-8 rounded-xl appearance-none cursor-pointer focus:outline-none border border-white/10">
+                        <option value="cyberpunk" class="bg-slate-900 text-cyan-400">⚡ 赛博霓虹 Cyberpunk</option>
+                        <option value="synthwave" class="bg-slate-900 text-pink-400">🌅 日落复古 Synthwave</option>
+                        <option value="matrix" class="bg-slate-900 text-emerald-400">💻 矩阵代码 Matrix</option>
+                        <option value="monochrome" class="bg-slate-900 text-slate-200">⚪ 极简白夜 Monochrome</option>
+                    </select>
+                    <i class="fa-solid fa-chevron-down absolute right-3 top-1/2 -translate-y-1/2 text-xs text-slate-400 pointer-events-none"></i>
                 </div>
 
-                <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-stretch">
-                    <!-- About Me Photo Card -->
-                    <div class="lg:col-span-4 glass-card p-4 rounded-2xl shadow-sm border border-slate-200/80 flex flex-col items-center justify-center">
-                        <div class="w-full aspect-[4/3] sm:aspect-square rounded-xl overflow-hidden relative group bg-slate-100">
-                            <!-- 
-                                【關於我區塊 - 個人生活照/工作照】
-                                替換下方 src 為您的另張照片連結（例如日常生活照或工作照）
-                            -->
-                            <img src="https://placehold.co/500x500/faf5ff/7c3aed?text=%E7%94%9F%E6%B4%BB%E7%85%A7+%2F+Life+Photo" 
-                                 alt="林玉婷生活照片" 
-                                 class="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500">
-                            <div class="absolute inset-0 bg-gradient-to-t from-slate-900/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-4">
-                                <span class="text-xs text-white font-medium">✨ 記錄每一個熱愛生活的瞬間</span>
-                            </div>
-                        </div>
-                        <div class="mt-4 text-center">
-                            <h4 class="font-bold text-slate-800 text-base">林玉婷 (Lin Yu-Ting)</h4>
-                            <p class="text-xs text-slate-500 mt-0.5">黎明技術學院 數位多媒體系</p>
-                        </div>
+                <!-- Settings Drawer Toggle Button -->
+                <button onclick="toggleSettingsDrawer()" class="glass-panel-sm hover:bg-white/10 p-2.5 rounded-xl text-slate-300 hover:text-white transition-all border border-white/10" title="控制面板">
+                    <i class="fa-solid fa-sliders text-base"></i>
+                </button>
+            </div>
+        </header>
+
+        <!-- Main Dashboard Content Grid -->
+        <main class="w-full max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6 my-auto">
+
+            <!-- LEFT PANEL: Cyber Digital Clock (Cols 7) -->
+            <section class="lg:col-span-7 glass-panel rounded-3xl p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden transition-all duration-500 group">
+                <!-- Background decorative glow -->
+                <div id="clock-glow-bg" class="absolute -right-20 -top-20 w-72 h-72 rounded-full bg-cyan-500/10 blur-3xl pointer-events-none transition-all duration-700"></div>
+
+                <!-- Top Status Bar in Clock Card -->
+                <div class="flex items-center justify-between mb-6 z-10">
+                    <div class="flex items-center gap-2">
+                        <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-rajdhani font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+                            <span class="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse mr-1.5"></span> SYSTEM LIVE
+                        </span>
+                        <span id="timezone-badge" class="text-xs text-slate-400 font-rajdhani tracking-wider">UTC+8</span>
                     </div>
 
-                    <!-- 3 Cards Content Column -->
-                    <div class="lg:col-span-8 grid grid-cols-1 sm:grid-cols-3 gap-6">
-                        <!-- Card 1: Education -->
-                        <div class="glass-card p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow flex flex-col items-start">
-                            <div class="w-10 h-10 bg-indigo-50 text-indigo-600 rounded-xl flex items-center justify-center text-lg mb-4">
-                                <i class="fa-solid fa-graduation-cap"></i>
-                            </div>
-                            <h3 class="text-lg font-bold text-slate-800 mb-2">專業背景</h3>
-                            <p class="text-slate-600 text-xs leading-relaxed mb-4">
-                                就讀於 <strong class="text-slate-800">黎明技術學院 數位多媒體系</strong>。專注於多媒體視覺創作、視訊後製剪輯與音訊整合。
-                            </p>
-                            <span class="mt-auto inline-flex items-center text-[11px] font-semibold text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-full">
-                                <i class="fa-solid fa-laptop-code mr-1"></i> 多媒體創作者
-                            </span>
-                        </div>
+                    <!-- 12h / 24h Switch -->
+                    <button id="btn-format-toggle" onclick="toggleTimeFormat()" class="glass-panel-sm hover:bg-white/10 px-3 py-1 rounded-lg text-xs font-rajdhani font-bold tracking-wider text-slate-300 hover:text-white transition-all border border-white/10">
+                        24 HOURS
+                    </button>
+                </div>
 
-                        <!-- Card 2: Life Philosophy -->
-                        <div class="glass-card p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow flex flex-col items-start">
-                            <div class="w-10 h-10 bg-amber-50 text-amber-600 rounded-xl flex items-center justify-center text-lg mb-4">
-                                <i class="fa-solid fa-compass"></i>
-                            </div>
-                            <h3 class="text-lg font-bold text-slate-800 mb-2">生活態度</h3>
-                            <p class="text-slate-600 text-xs leading-relaxed mb-4">
-                                保持對世界的好奇心與探索欲。不論是琴鍵上的音符、影片中的節奏，還是日常生活細節，都全情投入。
-                            </p>
-                            <span class="mt-auto inline-flex items-center text-[11px] font-semibold text-amber-700 bg-amber-50 px-2.5 py-1 rounded-full">
-                                <i class="fa-solid fa-sparkles mr-1"></i> 熱愛生活與創作
-                            </span>
-                        </div>
+                <!-- Main Digital Clock Display -->
+                <div class="my-auto py-4 text-center z-10">
+                    <div class="inline-flex items-baseline justify-center font-orbitron font-extrabold tracking-tight">
+                        <!-- Hours -->
+                        <span id="clock-hours" class="text-6xl sm:text-7xl md:text-8xl lg:text-9xl text-white drop-shadow-[0_0_25px_rgba(0,243,255,0.4)]">
+                            00
+                        </span>
 
-                        <!-- Card 3: Creative Mindset -->
-                        <div class="glass-card p-6 rounded-2xl shadow-sm hover:shadow-md transition-shadow flex flex-col items-start">
-                            <div class="w-10 h-10 bg-violet-50 text-violet-600 rounded-xl flex items-center justify-center text-lg mb-4">
-                                <i class="fa-solid fa-wand-magic-sparkles"></i>
-                            </div>
-                            <h3 class="text-lg font-bold text-slate-800 mb-2">跨界融合</h3>
-                            <p class="text-slate-600 text-xs leading-relaxed mb-4">
-                                結合音樂天賦（鋼琴與吉他）與視訊剪輯技巧，為作品注入更豐富的節奏感與視覺情感表現力。
-                            </p>
-                            <span class="mt-auto inline-flex items-center text-[11px] font-semibold text-violet-600 bg-violet-50 px-2.5 py-1 rounded-full">
-                                <i class="fa-solid fa-music mr-1"></i> 音樂 × 影像
+                        <!-- Separator -->
+                        <span id="clock-dots" class="text-5xl sm:text-6xl md:text-7xl lg:text-8xl mx-1 sm:mx-2 text-cyan-400 animate-pulse-fast">:</span>
+
+                        <!-- Minutes -->
+                        <span id="clock-minutes" class="text-6xl sm:text-7xl md:text-8xl lg:text-9xl text-white drop-shadow-[0_0_25px_rgba(0,243,255,0.4)]">
+                            00
+                        </span>
+
+                        <!-- Seconds & AM/PM Column -->
+                        <div class="flex flex-col items-start ml-2 sm:ml-4 text-left">
+                            <span id="clock-ampm" class="text-xs sm:text-base font-bold font-rajdhani text-pink-500 tracking-widest hidden">AM</span>
+                            <span id="clock-seconds" class="text-2xl sm:text-4xl lg:text-5xl font-bold text-cyan-400 font-orbitron drop-shadow-[0_0_15px_rgba(0,243,255,0.6)]">
+                                00
                             </span>
                         </div>
                     </div>
+
+                    <!-- Second Progress Bar Indicator -->
+                    <div class="w-full max-w-md mx-auto bg-slate-900/60 rounded-full h-1.5 mt-6 p-0.5 overflow-hidden border border-white/5">
+                        <div id="seconds-progress-bar" class="bg-gradient-to-r from-cyan-500 to-pink-500 h-full rounded-full transition-all duration-200" style="width: 0%;"></div>
+                    </div>
+                </div>
+
+                <!-- Date & Info Footer -->
+                <div class="pt-6 border-t border-white/10 flex flex-wrap items-center justify-between gap-4 z-10">
+                    <div class="flex items-center gap-3">
+                        <i class="fa-regular fa-calendar-days text-pink-400 text-lg"></i>
+                        <div>
+                            <div id="clock-date" class="font-rajdhani font-bold text-base sm:text-lg tracking-wide text-slate-100">2026年11月09日</div>
+                            <div id="clock-day" class="text-xs text-slate-400 font-medium">星期一 • MON</div>
+                        </div>
+                    </div>
+
+                    <!-- Interactive Mouse Visualizer Hint -->
+                    <div class="hidden sm:flex items-center gap-2 text-xs text-slate-400 font-rajdhani">
+                        <i class="fa-solid fa-wand-magic-sparkles text-cyan-400"></i>
+                        <span>移动鼠标连线 / 点击爆发粒子</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RIGHT PANEL: Pomodoro Focus Workstation (Cols 5) -->
+            <section class="lg:col-span-5 glass-panel rounded-3xl p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden transition-all duration-500">
+
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="font-orbitron font-bold text-base tracking-wider text-slate-200 flex items-center gap-2">
+                        <i class="fa-solid fa-stopwatch text-pink-500"></i> FOCUS TIMER
+                    </h2>
+                    <span id="pomo-streak-badge" class="px-2.5 py-0.5 rounded-full text-xs font-rajdhani font-bold bg-pink-500/10 text-pink-400 border border-pink-500/20">
+                        ⚡ 专注次数: <span id="pomo-count">0</span>
+                    </span>
+                </div>
+
+                <!-- Pomodoro Mode Selector Pills -->
+                <div class="grid grid-cols-3 gap-2 p-1 bg-slate-950/50 rounded-xl mb-6 border border-white/5">
+                    <button onclick="setPomodoroMode('focus')" id="pomo-btn-focus" class="pomo-mode-btn py-2 text-xs font-rajdhani font-bold rounded-lg transition-all bg-white/10 text-white shadow">
+                        专注 (25m)
+                    </button>
+                    <button onclick="setPomodoroMode('short')" id="pomo-btn-short" class="pomo-mode-btn py-2 text-xs font-rajdhani font-bold rounded-lg transition-all text-slate-400 hover:text-white">
+                        短休 (5m)
+                    </button>
+                    <button onclick="setPomodoroMode('long')" id="pomo-btn-long" class="pomo-mode-btn py-2 text-xs font-rajdhani font-bold rounded-lg transition-all text-slate-400 hover:text-white">
+                        长休 (15m)
+                    </button>
+                </div>
+
+                <!-- Circular Countdown Graphic Display -->
+                <div class="relative w-48 h-48 sm:w-56 sm:h-56 mx-auto my-2 flex items-center justify-center">
+                    <svg class="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+                        <!-- Outer Background Circle -->
+                        <circle cx="50" cy="50" r="42" stroke="currentColor" stroke-width="5" class="text-slate-900" fill="transparent" />
+                        <!-- Progress Circle -->
+                        <circle id="pomo-progress-circle" cx="50" cy="50" r="42" stroke="currentColor" stroke-width="5" 
+                                class="text-cyan-400 transition-all duration-1000 ease-linear" 
+                                fill="transparent" 
+                                stroke-dasharray="263.89" 
+                                stroke-dashoffset="0" 
+                                stroke-linecap="round" />
+                    </svg>
+
+                    <!-- Center Time Display -->
+                    <div class="absolute flex flex-col items-center justify-center text-center">
+                        <span id="pomo-timer-display" class="font-orbitron font-extrabold text-4xl sm:text-5xl text-white tracking-wider drop-shadow-lg">
+                            25:00
+                        </span>
+                        <span id="pomo-status-text" class="text-xs font-rajdhani font-bold uppercase tracking-widest text-slate-400 mt-1">
+                            READY TO FOCUS
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Pomodoro Controls -->
+                <div class="flex items-center justify-center gap-4 mt-6">
+                    <button id="pomo-btn-toggle" onclick="togglePomodoro()" class="flex-1 max-w-[140px] py-3 px-6 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-white font-orbitron font-bold text-sm tracking-wider shadow-lg shadow-cyan-500/25 active:scale-95 transition-all">
+                        START
+                    </button>
+                    <button onclick="resetPomodoro()" class="glass-panel-sm hover:bg-white/10 p-3 rounded-xl text-slate-300 hover:text-white active:scale-95 transition-all border border-white/10" title="重置计时器">
+                        <i class="fa-solid fa-rotate-right text-base"></i>
+                    </button>
+                </div>
+            </section>
+        </main>
+
+        <!-- Bottom Quick Dock / Control Toolbar -->
+        <footer class="w-full max-w-7xl mx-auto glass-panel rounded-2xl p-4 mt-6 flex flex-wrap items-center justify-between gap-4 text-xs font-rajdhani text-slate-400">
+            <div class="flex items-center gap-6">
+                <!-- Particle Mode Toggle -->
+                <div class="flex items-center gap-2">
+                    <span class="text-slate-300 font-semibold">粒子模式:</span>
+                    <button onclick="toggleParticleMode()" id="btn-particle-mode" class="glass-panel-sm hover:bg-white/10 px-3 py-1 rounded-lg text-cyan-400 font-bold border border-white/10">
+                        🧲 引力 Attract
+                    </button>
+                </div>
+                <!-- Manual Particle Burst Button -->
+                <button onclick="triggerBurstWave()" class="glass-panel-sm hover:bg-white/10 px-3 py-1 rounded-lg text-pink-400 font-bold border border-white/10 flex items-center gap-1.5">
+                    <i class="fa-solid fa-explosion"></i> 触发粒子爆发
+                </button>
+            </div>
+
+            <!-- Ambient Sound Tone Selector -->
+            <div class="flex items-center gap-3">
+                <span class="text-slate-300 font-semibold hidden sm:inline">环境音类型:</span>
+                <div class="flex items-center gap-1">
+                    <button onclick="setSynthTone('cyber')" id="tone-cyber" class="synth-tone-btn px-2.5 py-1 rounded-md bg-cyan-500/20 text-cyan-400 font-bold border border-cyan-500/30">
+                        赛博低音
+                    </button>
+                    <button onclick="setSynthTone('deep')" id="tone-deep" class="synth-tone-btn px-2.5 py-1 rounded-md hover:bg-white/5 text-slate-400 font-bold">
+                        深空静谧
+                    </button>
+                    <button onclick="setSynthTone('zen')" id="tone-zen" class="synth-tone-btn px-2.5 py-1 rounded-md hover:bg-white/5 text-slate-400 font-bold">
+                        暖阳和弦
+                    </button>
                 </div>
             </div>
-        </section>
+        </footer>
+    </div>
 
-        <!-- Skills Section -->
-        <section id="skills" class="py-20 px-6 bg-slate-50/50">
-            <div class="max-w-6xl mx-auto fade-in-up">
-                <div class="text-center max-w-2xl mx-auto mb-14">
-                    <span class="text-indigo-600 font-semibold text-xs tracking-widest uppercase">MY SKILLS</span>
-                    <h2 class="text-3xl font-bold text-slate-900 mt-2">專業技能</h2>
-                    <p class="text-slate-500 text-sm mt-2">結合視訊藝術與音樂素養的核心專長</p>
-                    <div class="w-12 h-1 bg-indigo-600 mx-auto mt-4 rounded-full"></div>
+    <!-- Side Control Panel Modal / Drawer -->
+    <div id="settings-drawer" class="fixed inset-y-0 right-0 w-full max-w-xs sm:max-w-sm glass-panel z-50 transform translate-x-full transition-transform duration-300 ease-in-out p-6 flex flex-col justify-between border-l border-white/10 shadow-2xl">
+        <div>
+            <!-- Drawer Header -->
+            <div class="flex items-center justify-between pb-4 border-b border-white/10 mb-6">
+                <h3 class="font-orbitron font-bold text-base text-white flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-cyan-400"></i> 控制工作站
+                </h3>
+                <button onclick="toggleSettingsDrawer()" class="text-slate-400 hover:text-white p-1">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
+            </div>
+
+            <!-- Settings Form Controls -->
+            <div class="space-y-6">
+                <!-- Theme Select Mobile -->
+                <div class="block sm:hidden">
+                    <label class="block text-xs font-rajdhani font-bold text-slate-300 uppercase tracking-wider mb-2">配色主题</label>
+                    <select onchange="changeTheme(this.value)" class="w-full glass-panel-sm text-slate-200 text-sm font-rajdhani font-semibold p-2.5 rounded-xl border border-white/10">
+                        <option value="cyberpunk" class="bg-slate-900 text-cyan-400">⚡ 赛博霓虹 Cyberpunk</option>
+                        <option value="synthwave" class="bg-slate-900 text-pink-400">🌅 日落复古 Synthwave</option>
+                        <option value="matrix" class="bg-slate-900 text-emerald-400">💻 矩阵代码 Matrix</option>
+                        <option value="monochrome" class="bg-slate-900 text-slate-200">⚪ 极简白夜 Monochrome</option>
+                    </select>
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
-                    <!-- Skill 1: Video Editing -->
-                    <div class="bg-white p-8 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group">
-                        <div class="flex items-center justify-between mb-6">
-                            <div class="w-14 h-14 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                                <i class="fa-solid fa-film"></i>
-                            </div>
-                            <span class="text-xs font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">Core Feature</span>
-                        </div>
-                        <h3 class="text-xl font-bold text-slate-800 mb-3">影片剪輯</h3>
-                        <p class="text-slate-600 text-sm leading-relaxed mb-6">
-                            熟悉剪輯敘事、節奏對點、調色與音效襯托。能將零碎的素材轉化為有溫度、有故事感的視訊作品。
-                        </p>
-                        <div class="space-y-2">
-                            <div class="flex justify-between text-xs text-slate-500 font-medium">
-                                <span>敘事節奏與剪輯</span>
-                                <span>專業應用</span>
-                            </div>
-                            <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                                <div class="bg-indigo-600 h-2 rounded-full w-[90%]"></div>
-                            </div>
-                        </div>
+                <!-- Particle Density -->
+                <div>
+                    <div class="flex justify-between text-xs font-rajdhani font-bold text-slate-300 mb-2">
+                        <span>粒子数量</span>
+                        <span id="val-particle-count" class="text-cyan-400">90</span>
                     </div>
-
-                    <!-- Skill 2: Piano -->
-                    <div class="bg-white p-8 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group">
-                        <div class="flex items-center justify-between mb-6">
-                            <div class="w-14 h-14 bg-violet-50 text-violet-600 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                                <i class="fa-solid fa-compact-disc"></i>
-                            </div>
-                            <span class="text-xs font-bold text-violet-600 bg-violet-50 px-3 py-1 rounded-full">Music</span>
-                        </div>
-                        <h3 class="text-xl font-bold text-slate-800 mb-3">彈鋼琴</h3>
-                        <p class="text-slate-600 text-sm leading-relaxed mb-6">
-                            鋼琴演奏與和弦理解，具備優異的音感與旋律表達能力，能為影像創作創作更靈動的配樂靈感。
-                        </p>
-                        <div class="space-y-2">
-                            <div class="flex justify-between text-xs text-slate-500 font-medium">
-                                <span>琴鍵演奏與旋律</span>
-                                <span>音樂感悟</span>
-                            </div>
-                            <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                                <div class="bg-violet-600 h-2 rounded-full w-[85%]"></div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Skill 3: Guitar -->
-                    <div class="bg-white p-8 rounded-2xl border border-slate-200/80 shadow-sm hover:shadow-xl hover:-translate-y-1 transition-all group">
-                        <div class="flex items-center justify-between mb-6">
-                            <div class="w-14 h-14 bg-amber-50 text-amber-600 rounded-2xl flex items-center justify-center text-2xl group-hover:scale-110 transition-transform">
-                                <i class="fa-solid fa-guitar"></i>
-                            </div>
-                            <span class="text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1 rounded-full">Acoustic</span>
-                        </div>
-                        <h3 class="text-xl font-bold text-slate-800 mb-3">彈吉他</h3>
-                        <p class="text-slate-600 text-sm leading-relaxed mb-6">
-                            吉他彈唱與指彈技巧，善於捕捉流行與民謠風感的和諧弦律，是日常創作與紓壓的絕佳媒介。
-                        </p>
-                        <div class="space-y-2">
-                            <div class="flex justify-between text-xs text-slate-500 font-medium">
-                                <span>吉他彈唱與節奏</span>
-                                <span>豐富經驗</span>
-                            </div>
-                            <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
-                                <div class="bg-amber-500 h-2 rounded-full w-[80%]"></div>
-                            </div>
-                        </div>
-                    </div>
+                    <input type="range" id="slider-particle-count" min="30" max="180" value="90" oninput="updateParticleCount(this.value)" class="w-full accent-cyan-400 bg-slate-800 rounded-lg h-2 cursor-pointer">
                 </div>
 
-                <!-- Skill Summary Banner -->
-                <div class="mt-12 bg-gradient-to-r from-indigo-900 to-slate-900 text-white rounded-2xl p-8 shadow-lg flex flex-col md:flex-row items-center justify-between gap-6">
-                    <div class="space-y-2 text-center md:text-left">
-                        <h4 class="text-xl font-bold">視聽合一的創意表達</h4>
-                        <p class="text-slate-300 text-sm max-w-xl">
-                            將音樂的律動感融會貫通於影像剪輯中，打造聲光相符、最具渲染力的多媒體內容。
-                        </p>
+                <!-- Particle Speed -->
+                <div>
+                    <div class="flex justify-between text-xs font-rajdhani font-bold text-slate-300 mb-2">
+                        <span>粒子移动速度</span>
+                        <span id="val-particle-speed" class="text-cyan-400">1.0x</span>
                     </div>
-                    <a href="#contact" class="shrink-0 bg-white text-slate-900 hover:bg-slate-100 px-6 py-3 rounded-xl font-medium text-sm transition-colors">
-                        洽談合作機會
-                    </a>
+                    <input type="range" id="slider-particle-speed" min="0.2" max="3.0" step="0.2" value="1.0" oninput="updateParticleSpeed(this.value)" class="w-full accent-cyan-400 bg-slate-800 rounded-lg h-2 cursor-pointer">
+                </div>
+
+                <!-- Connection Distance -->
+                <div>
+                    <div class="flex justify-between text-xs font-rajdhani font-bold text-slate-300 mb-2">
+                        <span>连线触及距离</span>
+                        <span id="val-connect-dist" class="text-cyan-400">120px</span>
+                    </div>
+                    <input type="range" id="slider-connect-dist" min="60" max="220" value="120" oninput="updateConnectDistance(this.value)" class="w-full accent-cyan-400 bg-slate-800 rounded-lg h-2 cursor-pointer">
+                </div>
+
+                <!-- Audio Master Volume -->
+                <div>
+                    <div class="flex justify-between text-xs font-rajdhani font-bold text-slate-300 mb-2">
+                        <span>环境音效音量</span>
+                        <span id="val-volume" class="text-pink-400">50%</span>
+                    </div>
+                    <input type="range" id="slider-volume" min="0" max="100" value="50" oninput="updateMasterVolume(this.value)" class="w-full accent-pink-500 bg-slate-800 rounded-lg h-2 cursor-pointer">
                 </div>
             </div>
-        </section>
-
-        <!-- Interests Section -->
-        <section id="interests" class="py-20 px-6 max-w-6xl mx-auto">
-            <div class="fade-in-up">
-                <div class="text-center max-w-2xl mx-auto mb-14">
-                    <span class="text-indigo-600 font-semibold text-xs tracking-widest uppercase">INTERESTS & LIFESTYLE</span>
-                    <h2 class="text-3xl font-bold text-slate-900 mt-2">興趣愛好</h2>
-                    <p class="text-slate-500 text-sm mt-2">在沉澱與吸收中，蓄積創作的靈感泉源</p>
-                    <div class="w-12 h-1 bg-indigo-600 mx-auto mt-4 rounded-full"></div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
-                    <!-- Interest 1: Reading -->
-                    <div class="glass-card rounded-2xl overflow-hidden p-8 border border-slate-200/80 hover:border-indigo-200 transition-all flex flex-col sm:flex-row gap-6 items-start">
-                        <div class="w-16 h-16 rounded-2xl bg-indigo-100/70 text-indigo-600 flex items-center justify-center text-3xl shrink-0">
-                            <i class="fa-solid fa-book-open"></i>
-                        </div>
-                        <div class="space-y-3">
-                            <div class="flex items-center gap-2">
-                                <h3 class="text-2xl font-bold text-slate-800">讀書 Reading</h3>
-                            </div>
-                            <p class="text-slate-600 text-sm leading-relaxed">
-                                喜歡閱讀各類文字作品與創作書籍。在字裡行間拓展視野，豐富心靈世界，同時為創作積累豐富的思想底蘊與視覺意象。
-                            </p>
-                            <div class="flex flex-wrap gap-2 pt-2">
-                                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-md font-medium">知識探索</span>
-                                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-md font-medium">靈感採集</span>
-                                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-md font-medium">沉澱思考</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Interest 2: Sleep & Recharge -->
-                    <div class="glass-card rounded-2xl overflow-hidden p-8 border border-slate-200/80 hover:border-violet-200 transition-all flex flex-col sm:flex-row gap-6 items-start">
-                        <div class="w-16 h-16 rounded-2xl bg-violet-100/70 text-violet-600 flex items-center justify-center text-3xl shrink-0">
-                            <i class="fa-solid fa-moon"></i>
-                        </div>
-                        <div class="space-y-3">
-                            <div class="flex items-center gap-2">
-                                <h3 class="text-2xl font-bold text-slate-800">高品質休息 Sleep & Recharge</h3>
-                            </div>
-                            <p class="text-slate-600 text-sm leading-relaxed">
-                                重視充沛的睡眠與身心修復。好的休息是為了走更遠的路，保持充足精力，讓每一步探索與每一次認真付出的工作都擁有最佳狀態。
-                            </p>
-                            <div class="flex flex-wrap gap-2 pt-2">
-                                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-md font-medium">身心重置</span>
-                                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-md font-medium">優質睡眠</span>
-                                <span class="bg-slate-100 text-slate-600 text-xs px-3 py-1 rounded-md font-medium">生活平衡</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Contact Section -->
-        <section id="contact" class="py-20 px-6 bg-gradient-to-b from-slate-50/50 to-indigo-50/30">
-            <div class="max-w-4xl mx-auto fade-in-up">
-                <div class="text-center max-w-2xl mx-auto mb-14">
-                    <span class="text-indigo-600 font-semibold text-xs tracking-widest uppercase">GET IN TOUCH</span>
-                    <h2 class="text-3xl font-bold text-slate-900 mt-2">聯絡方式</h2>
-                    <p class="text-slate-500 text-sm mt-2">歡迎與我聯繫，交流視訊剪輯、音樂創作或合作機會！</p>
-                    <div class="w-12 h-1 bg-indigo-600 mx-auto mt-4 rounded-full"></div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                    <!-- Email Card -->
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col items-center text-center group hover:shadow-lg transition-all">
-                        <div class="w-14 h-14 bg-rose-50 text-rose-500 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">
-                            <i class="fa-regular fa-envelope"></i>
-                        </div>
-                        <h4 class="text-base font-bold text-slate-800">Email 信箱</h4>
-                        <p class="text-xs text-slate-500 mt-1 mb-4 break-all max-w-full font-mono bg-slate-50 px-2 py-1 rounded">
-                            bd1151032@venus.lit.edu.tw
-                        </p>
-                        <button onclick="copyToClipboard('bd1151032@venus.lit.edu.tw', 'Email')" class="mt-auto w-full bg-slate-900 hover:bg-indigo-600 text-white text-xs font-medium py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2">
-                            <i class="fa-regular fa-copy"></i>
-                            <span>複製 Email</span>
-                        </button>
-                    </div>
-
-                    <!-- Line Card -->
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col items-center text-center group hover:shadow-lg transition-all">
-                        <div class="w-14 h-14 bg-emerald-50 text-emerald-500 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">
-                            <i class="fa-brands fa-line"></i>
-                        </div>
-                        <h4 class="text-base font-bold text-slate-800">Line ID</h4>
-                        <p class="text-xs text-slate-500 mt-1 mb-4 font-mono bg-slate-50 px-3 py-1 rounded">
-                            blahblah
-                        </p>
-                        <button onclick="copyToClipboard('blahblah', 'Line ID')" class="mt-auto w-full bg-slate-900 hover:bg-emerald-600 text-white text-xs font-medium py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2">
-                            <i class="fa-regular fa-copy"></i>
-                            <span>複製 Line ID</span>
-                        </button>
-                    </div>
-
-                    <!-- Instagram Card -->
-                    <div class="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col items-center text-center group hover:shadow-lg transition-all">
-                        <div class="w-14 h-14 bg-pink-50 text-pink-500 rounded-2xl flex items-center justify-center text-2xl mb-4 group-hover:scale-110 transition-transform">
-                            <i class="fa-brands fa-instagram"></i>
-                        </div>
-                        <h4 class="text-base font-bold text-slate-800">Instagram</h4>
-                        <p class="text-xs text-slate-500 mt-1 mb-4 font-mono bg-slate-50 px-3 py-1 rounded">
-                            blahblajh
-                        </p>
-                        <button onclick="copyToClipboard('blahblajh', 'Instagram')" class="mt-auto w-full bg-slate-900 hover:bg-pink-600 text-white text-xs font-medium py-2.5 rounded-xl transition-colors flex items-center justify-center gap-2">
-                            <i class="fa-regular fa-copy"></i>
-                            <span>複製 IG 帳號</span>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </section>
-    </main>
-
-    <!-- Footer -->
-    <footer class="border-t border-slate-200 bg-white py-10 px-6">
-        <div class="max-w-6xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-            <div class="flex items-center gap-2">
-                <span class="font-bold text-slate-700">林玉婷</span>
-                <span>• 黎明技術學院 數位多媒體系</span>
-            </div>
-            <p>© <span id="year"></span> 林玉婷. All rights reserved.</p>
         </div>
-    </footer>
 
-    <!-- JavaScript Logic -->
+        <!-- Drawer Footer Info -->
+        <div class="pt-6 border-t border-white/10 text-center">
+            <p class="text-xs text-slate-500 font-rajdhani">CYBER CHRONO ENGINE v2.5</p>
+            <p class="text-[10px] text-slate-600 font-mono mt-1">Web Audio API • Canvas 2D • Tailwind CSS</p>
+        </div>
+    </div>
+
+    <!-- MAIN JAVASCRIPT LOGIC -->
     <script>
-        // Set dynamic copyright year
-        document.getElementById('year').textContent = new Date().getFullYear();
-
-        // Mobile menu toggle
-        const menuBtn = document.getElementById('menu-btn');
-        const mobileMenu = document.getElementById('mobile-menu');
-        const mobileLinks = document.querySelectorAll('.mobile-link');
-
-        menuBtn.addEventListener('click', () => {
-            mobileMenu.classList.toggle('hidden');
-        });
-
-        mobileLinks.forEach(link => {
-            link.addEventListener('click', () => {
-                mobileMenu.classList.add('hidden');
-            });
-        });
-
-        // Toast notification logic
-        function showToast(message) {
-            const toast = document.getElementById('toast');
-            const toastMessage = document.getElementById('toast-message');
-            
-            toastMessage.textContent = message;
-            toast.classList.remove('translate-y-20', 'opacity-0');
-            
-            setTimeout(() => {
-                toast.classList.add('translate-y-20', 'opacity-0');
-            }, 3000);
-        }
-
-        // Copy functionality with fallback for browser iframe constraints
-        function copyToClipboard(text, label) {
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(text).then(() => {
-                    showToast(`已成功複製 ${label}：${text}`);
-                }).catch(() => {
-                    fallbackCopy(text, label);
-                });
-            } else {
-                fallbackCopy(text, label);
+        /* ==========================================================================
+           1. COLOR THEMES & CONFIGURATION
+           ========================================================================== */
+        const THEMES = {
+            cyberpunk: {
+                name: '赛博霓虹',
+                bgClass: 'bg-slate-950',
+                primary: '#00f3ff',
+                primaryGlow: 'rgba(0, 243, 255, 0.5)',
+                secondary: '#ff007f',
+                secondaryGlow: 'rgba(255, 0, 127, 0.5)',
+                particles: ['#00f3ff', '#ff007f', '#9d00ff', '#ffe600'],
+                lineColor: '0, 243, 255'
+            },
+            synthwave: {
+                name: '日落复古',
+                bgClass: 'bg-indigo-950',
+                primary: '#ff7e5f',
+                primaryGlow: 'rgba(255, 126, 95, 0.5)',
+                secondary: '#feb47b',
+                secondaryGlow: 'rgba(254, 180, 123, 0.5)',
+                particles: ['#ff7e5f', '#feb47b', '#d7385e', '#ff2a74'],
+                lineColor: '255, 126, 95'
+            },
+            matrix: {
+                name: '矩阵代码',
+                bgClass: 'bg-black',
+                primary: '#00ff66',
+                primaryGlow: 'rgba(0, 255, 102, 0.5)',
+                secondary: '#00cc44',
+                secondaryGlow: 'rgba(0, 204, 68, 0.5)',
+                particles: ['#00ff66', '#00cc44', '#003311', '#ccffdd'],
+                lineColor: '0, 255, 102'
+            },
+            monochrome: {
+                name: '极简白夜',
+                bgClass: 'bg-neutral-950',
+                primary: '#ffffff',
+                primaryGlow: 'rgba(255, 255, 255, 0.6)',
+                secondary: '#94a3b8',
+                secondaryGlow: 'rgba(148, 163, 184, 0.4)',
+                particles: ['#ffffff', '#cbd5e1', '#64748b', '#38bdf8'],
+                lineColor: '255, 255, 255'
             }
-        }
-
-        function fallbackCopy(text, label) {
-            const textArea = document.createElement("textarea");
-            textArea.value = text;
-            textArea.style.position = "fixed";
-            textArea.style.left = "-9999px";
-            document.body.appendChild(textArea);
-            textArea.focus();
-            textArea.select();
-            try {
-                document.execCommand('copy');
-                showToast(`已成功複製 ${label}：${text}`);
-            } catch (err) {
-                showToast(`複製失敗，請手動複製：${text}`);
-            }
-            document.body.removeChild(textArea);
-        }
-
-        // Intersection Observer for scroll animations
-        const observerOptions = {
-            root: null,
-            rootMargin: '0px',
-            threshold: 0.15
         };
 
-        const observer = new IntersectionObserver((entries, observer) => {
-            entries.forEach(entry => {
-                if (entry.isIntersecting) {
-                    entry.target.classList.add('visible');
-                }
-            });
-        }, observerOptions);
+        let currentThemeKey = 'cyberpunk';
+        let is24HourFormat = true;
 
-        document.querySelectorAll('.fade-in-up').forEach(el => {
-            observer.observe(el);
+        /* ==========================================================================
+           2. WEB AUDIO API SYNTHESIZER (No external sound files required)
+           ========================================================================== */
+        class WebAudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.masterGain = null;
+                this.ambientGain = null;
+                this.oscillators = [];
+                this.isPlayingAmbient = false;
+                this.currentTone = 'cyber'; // 'cyber', 'deep', 'zen'
+                this.volume = 0.5;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+
+                    this.masterGain = this.ctx.createGain();
+                    this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
+                    this.masterGain.connect(this.ctx.destination);
+
+                    this.ambientGain = this.ctx.createGain();
+                    this.ambientGain.gain.setValueAtTime(0, this.ctx.currentTime);
+                    this.ambientGain.connect(this.masterGain);
+                }
+
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            // Short futuristic UI click sound
+            playClickSound() {
+                if (!this.ctx) return;
+                try {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(800, this.ctx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(200, this.ctx.currentTime + 0.05);
+
+                    gain.gain.setValueAtTime(0.15 * this.volume, this.ctx.currentTime);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.05);
+
+                    osc.connect(gain);
+                    gain.connect(this.masterGain);
+
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.05);
+                } catch(e) {}
+            }
+
+            // Alarm Chime Sound for Pomodoro completion
+            playAlarmSound() {
+                if (!this.ctx) this.init();
+                const notes = [523.25, 659.25, 783.99, 1046.50]; // C5, E5, G5, C6 arpeggio
+                notes.forEach((freq, idx) => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime + idx * 0.12);
+
+                    gain.gain.setValueAtTime(0, this.ctx.currentTime + idx * 0.12);
+                    gain.gain.linearRampToValueAtTime(0.2 * this.volume, this.ctx.currentTime + idx * 0.12 + 0.02);
+                    gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + idx * 0.12 + 0.8);
+
+                    osc.connect(gain);
+                    gain.connect(this.masterGain);
+
+                    osc.start(this.ctx.currentTime + idx * 0.12);
+                    osc.stop(this.ctx.currentTime + idx * 0.12 + 0.8);
+                });
+            }
+
+            // Continuous Relaxing Synthesizer Drone
+            toggleAmbient() {
+                this.init();
+                if (this.isPlayingAmbient) {
+                    this.stopAmbient();
+                } else {
+                    this.startAmbient();
+                }
+                return this.isPlayingAmbient;
+            }
+
+            startAmbient() {
+                if (this.isPlayingAmbient) return;
+                this.oscillators = [];
+
+                let freqs = [65.41, 98.00, 130.81]; // C2, G2, C3 (Cyber Drone)
+                if (this.currentTone === 'deep') freqs = [55.00, 82.41, 110.00]; // A1, E2, A2
+                if (this.currentTone === 'zen') freqs = [174.61, 220.00, 261.63]; // F3, A3, C4
+
+                freqs.forEach(freq => {
+                    const osc = this.ctx.createOscillator();
+                    const filter = this.ctx.createBiquadFilter();
+
+                    osc.type = this.currentTone === 'zen' ? 'sine' : 'sawtooth';
+                    osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+
+                    filter.type = 'lowpass';
+                    filter.frequency.setValueAtTime(350, this.ctx.currentTime);
+
+                    osc.connect(filter);
+                    filter.connect(this.ambientGain);
+
+                    osc.start();
+                    this.oscillators.push(osc);
+                });
+
+                // Fade in ambient volume
+                this.ambientGain.gain.linearRampToValueAtTime(0.25 * this.volume, this.ctx.currentTime + 1.5);
+                this.isPlayingAmbient = true;
+            }
+
+            stopAmbient() {
+                if (!this.isPlayingAmbient) return;
+                this.ambientGain.gain.linearRampToValueAtTime(0.001, this.ctx.currentTime + 0.8);
+                setTimeout(() => {
+                    this.oscillators.forEach(osc => {
+                        try { osc.stop(); } catch(e) {}
+                    });
+                    this.oscillators = [];
+                    this.isPlayingAmbient = false;
+                }, 800);
+            }
+
+            setVolume(val) {
+                this.volume = val;
+                if (this.masterGain && this.ctx) {
+                    this.masterGain.gain.setValueAtTime(this.volume, this.ctx.currentTime);
+                }
+            }
+
+            setTone(toneType) {
+                this.currentTone = toneType;
+                if (this.isPlayingAmbient) {
+                    this.stopAmbient();
+                    setTimeout(() => this.startAmbient(), 900);
+                }
+            }
+        }
+
+        const audioApp = new WebAudioEngine();
+
+        /* ==========================================================================
+           3. CANVAS INTERACTIVE PARTICLE SYSTEM
+           ========================================================================== */
+        const canvas = document.getElementById('particle-canvas');
+        const ctx = canvas.getContext('2d');
+
+        let particles = [];
+        let mouse = { x: null, y: null, radius: 150 };
+        let particleConfig = {
+            count: 90,
+            speed: 1.0,
+            connectDistance: 120,
+            mode: 'attract' // 'attract' or 'repel'
+        };
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        // Mouse & Touch Tracking
+        window.addEventListener('mousemove', (e) => {
+            mouse.x = e.clientX;
+            mouse.y = e.clientY;
         });
+
+        window.addEventListener('mouseleave', () => {
+            mouse.x = null;
+            mouse.y = null;
+        });
+
+        // Click Burst Event
+        window.addEventListener('click', (e) => {
+            // Avoid burst if clicking buttons or UI inputs
+            if (e.target.closest('button, select, input, a')) return;
+            audioApp.playClickSound();
+            createBurst(e.clientX, e.clientY);
+        });
+
+        class Particle {
+            constructor(x, y, isBurst = false) {
+                this.x = x || Math.random() * canvas.width;
+                this.y = y || Math.random() * canvas.height;
+                
+                const speedMult = particleConfig.speed;
+                if (isBurst) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const force = Math.random() * 6 + 2;
+                    this.vx = Math.cos(angle) * force;
+                    this.vy = Math.sin(angle) * force;
+                    this.size = Math.random() * 4 + 2;
+                    this.life = 1.0;
+                    this.isBurst = true;
+                } else {
+                    this.vx = (Math.random() - 0.5) * 1.5 * speedMult;
+                    this.vy = (Math.random() - 0.5) * 1.5 * speedMult;
+                    this.size = Math.random() * 2.5 + 1;
+                    this.life = 1.0;
+                    this.isBurst = false;
+                }
+
+                const palette = THEMES[currentThemeKey].particles;
+                this.color = palette[Math.floor(Math.random() * palette.length)];
+            }
+
+            update() {
+                this.x += this.vx * particleConfig.speed;
+                this.y += this.vy * particleConfig.speed;
+
+                if (this.isBurst) {
+                    this.life -= 0.02;
+                    this.size *= 0.96;
+                } else {
+                    // Bounce off walls
+                    if (this.x < 0 || this.x > canvas.width) this.vx *= -1;
+                    if (this.y < 0 || this.y > canvas.height) this.vy *= -1;
+
+                    // Mouse Attraction / Repulsion Logic
+                    if (mouse.x !== null && mouse.y !== null) {
+                        const dx = mouse.x - this.x;
+                        const dy = mouse.y - this.y;
+                        const dist = Math.sqrt(dx * dx + dy * dy);
+
+                        if (dist < mouse.radius) {
+                            const force = (mouse.radius - dist) / mouse.radius;
+                            const angle = Math.atan2(dy, dx);
+                            const dir = particleConfig.mode === 'attract' ? 1 : -1;
+
+                            this.x += Math.cos(angle) * force * 3 * dir;
+                            this.y += Math.sin(angle) * force * 3 * dir;
+                        }
+                    }
+                }
+            }
+
+            draw() {
+                ctx.save();
+                ctx.globalAlpha = this.life;
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, Math.max(0.1, this.size), 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = this.color;
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function initParticles() {
+            particles = [];
+            for (let i = 0; i < particleConfig.count; i++) {
+                particles.push(new Particle());
+            }
+        }
+
+        function createBurst(x, y) {
+            for (let i = 0; i < 30; i++) {
+                particles.push(new Particle(x, y, true));
+            }
+        }
+
+        function drawLines() {
+            const rgb = THEMES[currentThemeKey].lineColor;
+            for (let i = 0; i < particles.length; i++) {
+                for (let j = i + 1; j < particles.length; j++) {
+                    const dx = particles[i].x - particles[j].x;
+                    const dy = particles[i].y - particles[j].y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+
+                    if (dist < particleConfig.connectDistance) {
+                        const alpha = (1 - dist / particleConfig.connectDistance) * 0.25;
+                        ctx.beginPath();
+                        ctx.moveTo(particles[i].x, particles[i].y);
+                        ctx.lineTo(particles[j].x, particles[j].y);
+                        ctx.strokeStyle = `rgba(${rgb}, ${alpha})`;
+                        ctx.lineWidth = 0.8;
+                        ctx.stroke();
+                    }
+                }
+            }
+        }
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            for (let i = particles.length - 1; i >= 0; i--) {
+                const p = particles[i];
+                p.update();
+                p.draw();
+
+                if (p.isBurst && p.life <= 0) {
+                    particles.splice(i, 1);
+                }
+            }
+
+            drawLines();
+            requestAnimationFrame(animateParticles);
+        }
+
+        initParticles();
+        animateParticles();
+
+        /* ==========================================================================
+           4. CYBER DIGITAL CLOCK LOGIC
+           ========================================================================== */
+        function updateClock() {
+            const now = new Date();
+            let hours = now.getHours();
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            let ampm = '';
+
+            if (!is24HourFormat) {
+                ampm = hours >= 12 ? 'PM' : 'AM';
+                hours = hours % 12 || 12;
+            }
+            hours = String(hours).padStart(2, '0');
+
+            document.getElementById('clock-hours').textContent = hours;
+            document.getElementById('clock-minutes').textContent = minutes;
+            document.getElementById('clock-seconds').textContent = seconds;
+
+            const ampmEl = document.getElementById('clock-ampm');
+            if (is24HourFormat) {
+                ampmEl.classList.add('hidden');
+            } else {
+                ampmEl.classList.remove('hidden');
+                ampmEl.textContent = ampm;
+            }
+
+            // Update Seconds Progress Bar
+            const secPercent = (now.getSeconds() / 60) * 100;
+            document.getElementById('seconds-progress-bar').style.width = `${secPercent}%`;
+
+            // Date & Weekday Formatting
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const date = String(now.getDate()).padStart(2, '0');
+            const daysEn = ['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'];
+            const daysCn = ['星期日', '星期一', '星期二', '星期三', '星期四', '星期五', '星期六'];
+
+            document.getElementById('clock-date').textContent = `${year}年${month}月${date}日`;
+            document.getElementById('clock-day').textContent = `${daysCn[now.getDay()]} • ${daysEn[now.getDay()]}`;
+        }
+
+        function toggleTimeFormat() {
+            audioApp.playClickSound();
+            is24HourFormat = !is24HourFormat;
+            document.getElementById('btn-format-toggle').textContent = is24HourFormat ? '24 HOURS' : '12 HOURS';
+            updateClock();
+        }
+
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        /* ==========================================================================
+           5. POMODORO FOCUS TIMER LOGIC
+           ========================================================================== */
+        let pomoState = {
+            totalSeconds: 25 * 60,
+            remainingSeconds: 25 * 60,
+            isRunning: false,
+            intervalId: null,
+            mode: 'focus', // 'focus', 'short', 'long'
+            streak: 0
+        };
+
+        const pomoDurations = {
+            focus: 25 * 60,
+            short: 5 * 60,
+            long: 15 * 60
+        };
+
+        const circleRadius = 42;
+        const circleCircumference = 2 * Math.PI * circleRadius;
+
+        function updatePomoDisplay() {
+            const mins = Math.floor(pomoState.remainingSeconds / 60);
+            const secs = pomoState.remainingSeconds % 60;
+            const formatted = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+
+            document.getElementById('pomo-timer-display').textContent = formatted;
+
+            // Update Circular SVG stroke-dashoffset
+            const progress = pomoState.remainingSeconds / pomoState.totalSeconds;
+            const offset = circleCircumference * (1 - progress);
+            document.getElementById('pomo-progress-circle').style.strokeDashoffset = offset;
+        }
+
+        function setPomodoroMode(mode) {
+            audioApp.playClickSound();
+            pomoState.mode = mode;
+            pomoState.totalSeconds = pomoDurations[mode];
+            pomoState.remainingSeconds = pomoDurations[mode];
+
+            if (pomoState.isRunning) {
+                clearInterval(pomoState.intervalId);
+                pomoState.isRunning = false;
+                document.getElementById('pomo-btn-toggle').textContent = 'START';
+            }
+
+            // Update UI Tab active styles
+            document.querySelectorAll('.pomo-mode-btn').forEach(btn => {
+                btn.classList.remove('bg-white/10', 'text-white', 'shadow');
+                btn.classList.add('text-slate-400');
+            });
+
+            const activeBtn = document.getElementById(`pomo-btn-${mode}`);
+            activeBtn.classList.add('bg-white/10', 'text-white', 'shadow');
+            activeBtn.classList.remove('text-slate-400');
+
+            document.getElementById('pomo-status-text').textContent = 
+                mode === 'focus' ? 'READY TO FOCUS' : mode === 'short' ? 'SHORT BREAK TIME' : 'LONG BREAK TIME';
+
+            updatePomoDisplay();
+        }
+
+        function togglePomodoro() {
+            audioApp.playClickSound();
+            if (pomoState.isRunning) {
+                // Pause
+                clearInterval(pomoState.intervalId);
+                pomoState.isRunning = false;
+                document.getElementById('pomo-btn-toggle').textContent = 'RESUME';
+                document.getElementById('pomo-status-text').textContent = 'TIMER PAUSED';
+            } else {
+                // Start / Resume
+                pomoState.isRunning = true;
+                document.getElementById('pomo-btn-toggle').textContent = 'PAUSE';
+                document.getElementById('pomo-status-text').textContent = 
+                    pomoState.mode === 'focus' ? 'FOCUSING...' : 'RELAXING...';
+
+                pomoState.intervalId = setInterval(() => {
+                    if (pomoState.remainingSeconds > 0) {
+                        pomoState.remainingSeconds--;
+                        updatePomoDisplay();
+                    } else {
+                        // Countdown Complete
+                        clearInterval(pomoState.intervalId);
+                        pomoState.isRunning = false;
+                        document.getElementById('pomo-btn-toggle').textContent = 'START';
+
+                        // Play alarm chime sound & trigger screen particle explosion
+                        audioApp.playAlarmSound();
+                        triggerBurstWave();
+
+                        if (pomoState.mode === 'focus') {
+                            pomoState.streak++;
+                            document.getElementById('pomo-count').textContent = pomoState.streak;
+                            document.getElementById('pomo-status-text').textContent = 'FOCUS SESSION DONE!';
+                        } else {
+                            document.getElementById('pomo-status-text').textContent = 'BREAK ENDED!';
+                        }
+                    }
+                }, 1000);
+            }
+        }
+
+        function resetPomodoro() {
+            audioApp.playClickSound();
+            if (pomoState.isRunning) {
+                clearInterval(pomoState.intervalId);
+                pomoState.isRunning = false;
+            }
+            pomoState.remainingSeconds = pomoState.totalSeconds;
+            document.getElementById('pomo-btn-toggle').textContent = 'START';
+            document.getElementById('pomo-status-text').textContent = 'TIMER RESET';
+            updatePomoDisplay();
+        }
+
+        updatePomoDisplay();
+
+        /* ==========================================================================
+           6. INTERACTIVE ACTIONS & THEME SWITCHING
+           ========================================================================== */
+        function changeTheme(themeKey) {
+            audioApp.playClickSound();
+            if (!THEMES[themeKey]) return;
+            currentThemeKey = themeKey;
+            const theme = THEMES[themeKey];
+
+            // Re-assign CSS variables for glowing effects
+            document.documentElement.style.setProperty('--primary-glow', theme.primaryGlow);
+            document.documentElement.style.setProperty('--primary-glow-alpha', theme.primaryGlow);
+
+            // Update DOM element accents
+            document.getElementById('header-accent-title').style.color = theme.primary;
+            document.getElementById('clock-glow-bg').style.backgroundColor = theme.primaryGlow;
+            document.getElementById('pomo-progress-circle').style.color = theme.primary;
+
+            // Re-init particle colors
+            initParticles();
+        }
+
+        function toggleAmbientAudio() {
+            const isPlaying = audioApp.toggleAmbient();
+            const icon = document.getElementById('audio-icon');
+            const text = document.getElementById('audio-text');
+
+            if (isPlaying) {
+                icon.className = 'fa-solid fa-volume-high text-cyan-400 animate-pulse';
+                text.textContent = '环境音: 开';
+            } else {
+                icon.className = 'fa-solid fa-volume-xmark text-pink-400';
+                text.textContent = '环境音: 关';
+            }
+        }
+
+        function setSynthTone(toneType) {
+            audioApp.playClickSound();
+            audioApp.setTone(toneType);
+            document.querySelectorAll('.synth-tone-btn').forEach(btn => {
+                btn.className = 'synth-tone-btn px-2.5 py-1 rounded-md hover:bg-white/5 text-slate-400 font-bold';
+            });
+            const activeBtn = document.getElementById(`tone-${toneType}`);
+            activeBtn.className = 'synth-tone-btn px-2.5 py-1 rounded-md bg-cyan-500/20 text-cyan-400 font-bold border border-cyan-500/30';
+        }
+
+        function toggleParticleMode() {
+            audioApp.playClickSound();
+            particleConfig.mode = particleConfig.mode === 'attract' ? 'repel' : 'attract';
+            const btn = document.getElementById('btn-particle-mode');
+            if (particleConfig.mode === 'attract') {
+                btn.innerHTML = '🧲 引力 Attract';
+                btn.className = 'glass-panel-sm hover:bg-white/10 px-3 py-1 rounded-lg text-cyan-400 font-bold border border-white/10';
+            } else {
+                btn.innerHTML = '💥 斥力 Repel';
+                btn.className = 'glass-panel-sm hover:bg-white/10 px-3 py-1 rounded-lg text-pink-400 font-bold border border-white/10';
+            }
+        }
+
+        function triggerBurstWave() {
+            createBurst(canvas.width / 2, canvas.height / 2);
+            createBurst(canvas.width / 3, canvas.height / 3);
+            createBurst((canvas.width / 3) * 2, (canvas.height / 3) * 2);
+        }
+
+        function toggleSettingsDrawer() {
+            audioApp.playClickSound();
+            const drawer = document.getElementById('settings-drawer');
+            drawer.classList.toggle('translate-x-full');
+        }
+
+        /* Settings Inputs Listeners */
+        function updateParticleCount(val) {
+            document.getElementById('val-particle-count').textContent = val;
+            particleConfig.count = parseInt(val);
+            initParticles();
+        }
+
+        function updateParticleSpeed(val) {
+            document.getElementById('val-particle-speed').textContent = `${val}x`;
+            particleConfig.speed = parseFloat(val);
+        }
+
+        function updateConnectDistance(val) {
+            document.getElementById('val-connect-dist').textContent = `${val}px`;
+            particleConfig.connectDistance = parseInt(val);
+        }
+
+        function updateMasterVolume(val) {
+            document.getElementById('val-volume').textContent = `${val}%`;
+            audioApp.setVolume(parseInt(val) / 100);
+        }
     </script>
 </body>
 </html>
